@@ -96,6 +96,28 @@ if __name__ == "__main__":
     create_folders_from_list(main_path, extensions)
     sort_files(main_path)
     remove_empty_folders(main_path)
+
+
+'''Unpacking archives'''
+for archive in os.listdir(fr"{my_path}\archives"):
+    os.mkdir(fr"{my_path}\archives\{os.path.splitext(archive)[0]}")
+    extract_dir = fr"{my_path}\archives\{os.path.splitext(archive)[0]}"
+    with ZipFile(fr"{my_path}\archives\{archive}") as arch:
+        arch.extractall(extract_dir)
+
+    def renamed(dirpath, names, encoding):
+        new_names = [old.encode('cp437').decode(encoding) for old in names]
+        for old, new in zip(names, new_names):
+            os.rename(os.path.join(dirpath, old),
+                      os.path.join(dirpath, normalize(os.path.splitext(new)[0]) + os.path.splitext(new)[1]))
+        return new_names
+
+    encoding = 'cp866'
+    os.chdir(extract_dir)
+    for dirpath, dirs, files in os.walk(os.curdir, topdown=True):
+        renamed(dirpath, files, encoding)
+        dirs[:] = renamed(dirpath, dirs, encoding)
+
 # Условия для обработки:
 # изображения переносим в папку images
 # документы переносим в папку documents
