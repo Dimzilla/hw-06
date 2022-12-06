@@ -2,13 +2,13 @@ import os
 from pathlib import Path
 from shutil import move
 from zipfile import ZipFile
+from sys import argv
+from glob import glob
 
 
 main_path = Path(r"d:\Разобрать")
 
-"""
-Tansliteration
-"""
+"""Tansliteration"""
 
 
 def normalize(transliteration):
@@ -17,9 +17,9 @@ def normalize(transliteration):
              "h", "ts", "ch", "sh", "sch", "", "y", "", "e", "yu", "ya", "je", "i", "ji", "g")
 
     latter_dict = {}
-    for cyr, lat in zip(cyrillic_ua, latin):
-        latter_dict[ord(cyr)] = lat
-        latter_dict[ord(cyr.upper())] = lat.upper()
+    for c, l in zip(cyrillic_ua, latin):
+        latter_dict[ord(c)] = l
+        latter_dict[ord(c.upper())] = l.upper()
 
     translated = transliteration.translate(latter_dict)
     word_check = (f"")
@@ -32,9 +32,36 @@ def normalize(transliteration):
     return word_check
 
 
-"""
-Key for check files
-"""
+'''Unpacking archives'''
+
+
+def unarchive(folder_path):
+    try:
+        for archive in os.listdir(fr"{ folder_path }\\archives_file"):
+            os.mkdir(
+                fr"{folder_path}\archives_file\{os.path.splitext(archive)[0]}")
+            extract_dir = fr"{folder_path}\archives_file\{os.path.splitext(archive)[0]}"
+            with ZipFile(fr"{folder_path}\archives_file\{archive}") as arch:
+                arch.extractall(extract_dir)
+
+            def renamed(dirpath, names, encoding):
+                new_names = [old.encode('cp437').decode(encoding)
+                             for old in names]
+                for old, new in zip(names, new_names):
+                    os.rename(os.path.join(dirpath, old),
+                              os.path.join(dirpath, normalize(os.path.splitext(new)[0]) + os.path.splitext(new)[1]))
+                return new_names
+
+            encoding = 'cp866'
+            os.chdir(extract_dir)
+            for dirpath, dirs, files in os.walk(os.curdir, topdown=True):
+                renamed(dirpath, files, encoding)
+                dirs[:] = renamed(dirpath, dirs, encoding)
+    except FileNotFoundError:
+        print(f"archives_file[zip,gz,tar] not found")
+
+
+"""Key for check files"""
 extensions = {
     "images_file": [".jpeg", ".png", ".jpg", ".svg"],
     "video_file": [".avi", ".mp4", ".mov", ".mkv"],
@@ -44,9 +71,7 @@ extensions = {
     "unknown_extensions_file": [None]
 }
 
-"""
-Creates folders from dictionary keys
-"""
+"""Creates folders and sort file"""
 
 
 def create_folders_from_list(folder_path, folder_names):
@@ -72,15 +97,18 @@ def sort_files(folder_path):
     ext_list = list(extensions.items())
 
     for file_path in file_paths:
-        extension = file_path.split(".")[-1]
-        file_name = file_path.split("\\")[-1]
+        extension = os.path.splitext(file_path)[1]
+        file_name = file_path.split("\\")[-1].split(".")[0]
+        file_name = normalize(file_name)
 
         for dict_key_int in range(len(ext_list)):
+
             if extension in ext_list[dict_key_int][1]:
+
                 print(
                     f"Moving {file_name} in {ext_list[dict_key_int][0]} folder\n")
                 os.rename(
-                    file_path, f"{main_path}\\{ext_list[dict_key_int][0]}\\{file_name}")
+                    file_path, f"{main_path}\\{ext_list[dict_key_int][0]}\\{file_name}{extension}")
 
 
 def remove_empty_folders(folder_path):
@@ -96,38 +124,4 @@ if __name__ == "__main__":
     create_folders_from_list(main_path, extensions)
     sort_files(main_path)
     remove_empty_folders(main_path)
-
-
-'''Unpacking archives'''
-for archive in os.listdir(fr"{my_path}\archives"):
-    os.mkdir(fr"{my_path}\archives\{os.path.splitext(archive)[0]}")
-    extract_dir = fr"{my_path}\archives\{os.path.splitext(archive)[0]}"
-    with ZipFile(fr"{my_path}\archives\{archive}") as arch:
-        arch.extractall(extract_dir)
-
-    def renamed(dirpath, names, encoding):
-        new_names = [old.encode('cp437').decode(encoding) for old in names]
-        for old, new in zip(names, new_names):
-            os.rename(os.path.join(dirpath, old),
-                      os.path.join(dirpath, normalize(os.path.splitext(new)[0]) + os.path.splitext(new)[1]))
-        return new_names
-
-    encoding = 'cp866'
-    os.chdir(extract_dir)
-    for dirpath, dirs, files in os.walk(os.curdir, topdown=True):
-        renamed(dirpath, files, encoding)
-        dirs[:] = renamed(dirpath, dirs, encoding)
-
-# Условия для обработки:
-# изображения переносим в папку images
-# документы переносим в папку documents
-# аудио файлы переносим в audio
-# видео файлы в video
-# архивы распаковываются и их содержимое переносится в папку archives
-# Критерии приёма задания
-# все файлы и папки переименовываются при помощи функции normalize.
-# расширения файлов не изменяются после переименования.
-# пустые папки удаляются
-# скрипт игнорирует папки archives, video, audio, documents, images
-# распакованное содержимое архива переносится в папку archives в подпапку, названную точно так же, как и архив, но без расширения в конце
-# файлы, расширения которых неизвестны, остаются без изменений.
+    unarchive(main_path)
